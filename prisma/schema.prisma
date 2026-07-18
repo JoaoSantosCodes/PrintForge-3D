@@ -8,116 +8,325 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// 1. Core Tenant Structure
+model Company {
+  id           String        @id @default(uuid()) @db.Uuid
+  name         String
+  planTier     String        @default("starter") // "starter", "pro", "enterprise"
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  users        User[]
+  printers     Printer[]
+  filaments    Filament[]
+  customers    Customer[]
+  products     Product[]
+  orders       Order[]
+  expenses     Expense[]
+  revenues     Revenue[]
+  settings     SystemSettings[]
+  auditLogs    AuditLog[]
+}
+
+model User {
+  id           String        @id @db.Uuid // Matches Supabase Auth User ID
+  email        String        @unique
+  role         String        @default("member") // "owner", "admin", "member"
+  companyId    String        @db.Uuid
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  auditLogs    AuditLog[]
+}
+
+// 2. Hardware and Assets
 model Printer {
-  id                    String         @id
+  id                    String               @id @default(uuid()) @db.Uuid
+  companyId             String               @db.Uuid
+  company               Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   name                  String
   model                 String
+  serialNumber          String?
+  nozzleSizeMm          Float                @default(0.4)
+  firmwareVersion       String?
   consumptionWatts      Float
   price                 Float
   lifespanHours         Int
-  annualMaintenanceCost Float
-  status                String         // active, printing, maintenance, inactive
-  createdAt             DateTime       @default(now())
-  profiles              PrintProfile[]
+  hoursWorked           Float                @default(0)
+  status                String               @default("active") // "active", "printing", "maintenance", "inactive"
+  createdAt             DateTime             @default(now())
+  maintenances          PrinterMaintenance[]
   jobs                  PrintJob[]
+
+  @@index([companyId])
 }
 
+model PrinterMaintenance {
+  id          String    @id @default(uuid()) @db.Uuid
+  companyId   String    @db.Uuid
+  printerId   String    @db.Uuid
+  printer     Printer   @relation(fields: [printerId], references: [id], onDelete: Cascade)
+  type        String    // "nozzle", "lubrication", "belts", "fans", "other"
+  cost        Float     @default(0)
+  description String
+  completedAt DateTime  @default(now())
+
+  @@index([companyId])
+  @@index([printerId])
+}
+
+// 3. Smart Inventory
 model Filament {
-  id            String         @id
-  brand         String
-  type          String
-  colorName     String
-  colorHex      String
-  weightG       Float
-  price         Float
-  currentStockG Float
-  createdAt     DateTime       @default(now())
-  profiles      PrintProfile[]
-  jobs          PrintJob[]
+  id                 String             @id @default(uuid()) @db.Uuid
+  companyId          String             @db.Uuid
+  company            Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  brand              String
+  type               String             // "PLA", "PETG", "ABS", "ASA", "TPU", "Resin"
+  colorName          String
+  colorHex           String
+  weightInitG        Float
+  weightCurrentG     Float
+  lengthRemainingM   Float?
+  price              Float
+  humidityPercent    Float?
+  storageLocation    String?
+  batchCode          String?
+  supplierName       String?
+  dateOpened         DateTime?
+  createdAt          DateTime           @default(now())
+  movements          FilamentMovement[]
+  jobs               PrintJob[]
+
+  @@index([companyId])
 }
 
-model PrintProfile {
-  id                 String    @id
-  name               String
-  printerId          String
-  printer            Printer   @relation(fields: [printerId], references: [id], onDelete: Cascade)
-  defaultFilamentId  String?
-  defaultFilament    Filament? @relation(fields: [defaultFilamentId], references: [id], onDelete: SetNull)
-  layerHeightMm      Float?
-  infillPercent      Int?
-  speedMms           Float?
-  description        String?
-  createdAt          DateTime  @default(now())
+model FilamentMovement {
+  id          String   @id @default(uuid()) @db.Uuid
+  companyId   String   @db.Uuid
+  filamentId  String   @db.Uuid
+  filament    Filament @relation(fields: [filamentId], references: [id], onDelete: Cascade)
+  type        String   // "in" (purchase/adjustment), "out" (print job), "correction" (manual weighing)
+  amountG     Float
+  description String
+  createdAt   DateTime @default(now())
+
+  @@index([companyId])
+  @@index([filamentId])
 }
 
+model Material {
+  id             String   @id @default(uuid()) @db.Uuid
+  companyId      String   @db.Uuid
+  name           String   // "Parafuso M3 10mm", "Ímã Neodímio 5x2", "Cola Bastão"
+  type           String   // "hardware", "consumable", "packaging"
+  qtyInit        Int
+  qtyCurrent     Int
+  unitCost       Float
+  createdAt      DateTime @default(now())
+
+  @@index([companyId])
+}
+
+// 4. CRM and Customers
 model Customer {
-  id        String     @id
+  id        String     @id @default(uuid()) @db.Uuid
+  companyId String     @db.Uuid
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   name      String
   phone     String
-  instagram String
-  address   String
-  notes     String
+  instagram String?
+  notes     String?
   createdAt DateTime   @default(now())
-  jobs      PrintJob[]
+  addresses Address[]
+  orders    Order[]
+
+  @@index([companyId])
 }
 
+model Address {
+  id         String   @id @default(uuid()) @db.Uuid
+  companyId  String   @db.Uuid
+  customerId String   @db.Uuid
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  street     String
+  city       String
+  state      String
+  postalCode String
+  type       String   @default("shipping") // "shipping", "billing"
+  createdAt  DateTime @default(now())
+
+  @@index([companyId])
+  @@index([customerId])
+}
+
+// 5. Products and Catalog
 model Product {
-  id             String   @id
+  id          String        @id @default(uuid()) @db.Uuid
+  companyId   String        @db.Uuid
+  company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name        String
+  price       Float
+  description String?
+  createdAt   DateTime      @default(now())
+  parts       ProductPart[]
+
+  @@index([companyId])
+}
+
+model ProductPart {
+  id             String   @id @default(uuid()) @db.Uuid
+  companyId      String   @db.Uuid
+  productId      String   @db.Uuid
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   name           String
   weightG        Float
   printTimeMins  Int
-  defaultFilamentId String?
-  suggestedPrice Float
-  description    String?
+  layerHeightMm  Float?
+  infillPercent  Int?
+  filamentBrand  String?
+  filamentType   String?  // PLA, PETG, etc
   createdAt      DateTime @default(now())
+
+  @@index([companyId])
+  @@index([productId])
+}
+
+// 6. Production & Sales Orders
+model Order {
+  id                    String     @id @default(uuid()) @db.Uuid
+  companyId             String     @db.Uuid
+  company               Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customerId            String     @db.Uuid
+  customer              Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  status                String     @default("received") // "received", "slicing", "queued", "printing", "post-process", "ready", "delivered"
+  totalPrice            Float
+  finalPrice            Float
+  discountAmount        Float      @default(0)
+  marketplaceType       String     @default("none") // "none", "ml", "shopee", "elo7", "custom"
+  marketplaceFeePercent Float      @default(0)
+  marketplaceFixedFee   Float      @default(0)
+  taxPercent            Float      @default(0)
+  shippingCost          Float      @default(0)
+  notes                 String?
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+  jobs                  PrintJob[]
+  revenues              Revenue[]
+
+  @@index([companyId])
+  @@index([customerId])
 }
 
 model PrintJob {
-  id                     String    @id
-  name                   String
-  customerId             String
-  customer               Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  printerId              String
-  printer                Printer   @relation(fields: [printerId], references: [id], onDelete: Cascade)
-  filamentId             String
-  filament               Filament  @relation(fields: [filamentId], references: [id], onDelete: Cascade)
-  weightG                Float
-  printTimeMins          Int
-  qty                    Int
-  failed                 Boolean   @default(false)
-  failedReason           String?
-  observations           String?
-  packagingType          String    // caixa, saco, custom, none
-  shippingCost           Float
-  paintingTimeMins       Int?
-  paintingLaborRate      Float?
-  paintCost              Float?
-  useAirbrush            Boolean?
-  airbrushCost           Float?
-  marketplaceFeePercent  Float
-  marketplaceFixedFee    Float
-  taxPercent             Float
-  markupPercent          Float
-  totalCost              Float
-  suggestedPrice         Float
-  finalPrice             Float
-  netProfit              Float
-  createdAt              DateTime  @default(now())
+  id            String     @id @default(uuid()) @db.Uuid
+  companyId     String     @db.Uuid
+  orderId       String     @db.Uuid
+  order         Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name          String
+  printerId     String     @db.Uuid
+  printer       Printer    @relation(fields: [printerId], references: [id], onDelete: Cascade)
+  filamentId    String     @db.Uuid
+  filament      Filament   @relation(fields: [filamentId], references: [id], onDelete: Cascade)
+  weightG       Float
+  printTimeMins Int
+  qty           Int        @default(1)
+  status        String     @default("queued") // "queued", "printing", "finished", "failed"
+  failed        Boolean    @default(false)
+  failedReason  String?
+  observations  String?
+  createdAt     DateTime   @default(now())
+  paintJobs     PaintJob[]
+
+  @@index([companyId])
+  @@index([orderId])
+  @@index([printerId])
+  @@index([filamentId])
 }
 
+model PaintJob {
+  id              String   @id @default(uuid()) @db.Uuid
+  companyId       String   @db.Uuid
+  printJobId      String   @db.Uuid
+  printJob        PrintJob @relation(fields: [printJobId], references: [id], onDelete: Cascade)
+  status          String   @default("pending") // "pending", "in-progress", "completed"
+  laborTimeMins   Int      @default(0)
+  laborRateHour   Float    @default(20.0)
+  paintCost       Float    @default(0)
+  useAirbrush     Boolean  @default(false)
+  airbrushRateHour Float   @default(2.5)
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  @@index([companyId])
+  @@index([printJobId])
+}
+
+// 7. Finance Control
+model Expense {
+  id          String    @id @default(uuid()) @db.Uuid
+  companyId   String    @db.Uuid
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category    String    // "rent", "internet", "power", "software", "raw-material", "marketing", "tax", "other"
+  amount      Float
+  description String
+  type        String    @default("variable") // "fixed", "variable"
+  dueDate     DateTime
+  paidAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([companyId])
+}
+
+model Revenue {
+  id          String   @id @default(uuid()) @db.Uuid
+  companyId   String   @db.Uuid
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  orderId     String?  @db.Uuid
+  order       Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  category    String   // "sales", "consulting", "freight", "other"
+  amount      Float
+  description String
+  receivedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([companyId])
+  @@index([orderId])
+}
+
+// 8. Settings and Logs
 model SystemSettings {
   id                             String   @id @default("default-settings")
-  electricityKwhRate             Float
-  defaultTaxPercent              Float
-  defaultMarkupPercent           Float
-  defaultMarketplaceFeePercent   Float
-  defaultMarketplaceFixedFee     Float
-  defaultPackagingBoxCost        Float
-  defaultPackagingTapeCost       Float
-  defaultPackagingBubbleWrapCost Float
-  currency                       String   @default("BRL")
+  companyId                      String   @db.Uuid
+  company                        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  electricityKwhRate             Float    @default(0.95)
+  defaultTaxPercent              Float    @default(0)
+  defaultMarkupPercent           Float    @default(30)
+  defaultMarketplaceFeePercent   Float    @default(0)
+  defaultMarketplaceFixedFee     Float    @default(0)
+  defaultPackagingBoxCost        Float    @default(2.0)
+  defaultPackagingTapeCost       Float    @default(0.4)
+  defaultPackagingBubbleWrapCost Float    @default(0.8)
+  defaultPaintingLaborRate       Float    @default(20.0)
+  defaultAirbrushHourlyRate      Float    @default(2.5)
   defaultWhatsAppTemplate        String?
-  defaultPaintingLaborRate       Float?
-  defaultAirbrushHourlyRate      Float?
-  updatedAt                      DateTime @default(now())
+  updatedAt                      DateTime @default(now()) @updatedAt
+
+  @@index([companyId])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  companyId  String   @db.Uuid
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId     String?  @db.Uuid
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  entity     String   // "filament", "printer", "order", "expense", etc.
+  entityId   String
+  action     String   // "create", "update", "delete", "auth_login"
+  beforeJson String?  @db.Text
+  afterJson  String?  @db.Text
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([companyId])
+  @@index([userId])
 }
