@@ -1,65 +1,314 @@
-import Image from "next/image";
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import LayoutShell, { TabType } from '@/components/LayoutShell';
+import { StorageManager, initializeStorage } from '@/lib/storage';
+import { Printer, Filament, PrintProfile, Customer, Product, PrintJob, SystemSettings } from '@/types';
+
+// Views
+import DashboardView from '@/components/views/DashboardView';
+import NewPrintView from '@/components/views/NewPrintView';
+import HistoryView from '@/components/views/HistoryView';
+import FilamentsView from '@/components/views/FilamentsView';
+import PrintersView from '@/components/views/PrintersView';
+import ProfilesView from '@/components/views/ProfilesView';
+import CustomersView from '@/components/views/CustomersView';
+import ProductsView from '@/components/views/ProductsView';
+import ReportsView from '@/components/views/ReportsView';
+import SettingsView from '@/components/views/SettingsView';
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // States
+  const [printers, setPrinters] = useState<Printer[]>([]);
+  const [filaments, setFilaments] = useState<Filament[]>([]);
+  const [profiles, setProfiles] = useState<PrintProfile[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [jobs, setJobs] = useState<PrintJob[]>([]);
+  const [settings, setSettings] = useState<SystemSettings>({
+    electricityKwhRate: 0.95,
+    defaultTaxPercent: 0,
+    defaultMarkupPercent: 30,
+    defaultMarketplaceFeePercent: 0,
+    defaultMarketplaceFixedFee: 0,
+    defaultPackagingBoxCost: 2.00,
+    defaultPackagingTapeCost: 0.40,
+    defaultPackagingBubbleWrapCost: 0.80,
+    currency: 'BRL',
+  });
+
+  // Catalog sell product prefill state
+  const [prefilledProduct, setPrefilledProduct] = useState<Product | null>(null);
+
+  // Load database on mount
+  useEffect(() => {
+    initializeStorage();
+    loadAllData();
+    
+    // Register Service Worker for PWA offline support
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        console.log('PWA Service Worker registrado com sucesso:', reg.scope);
+      }).catch((err) => {
+        console.error('Falha ao registrar PWA Service Worker:', err);
+      });
+    }
+    
+    // Check URL search params for default tab (e.g. ?tab=new-print)
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab') as TabType;
+      if (tabParam && [
+        'dashboard', 'new-print', 'history', 'filaments', 
+        'printers', 'profiles', 'customers', 'products', 
+        'reports', 'settings'
+      ].includes(tabParam)) {
+        setActiveTab(tabParam);
+      }
+    }
+    
+    setIsLoaded(true);
+  }, []);
+
+  const loadAllData = () => {
+    setPrinters(StorageManager.getPrinters());
+    setFilaments(StorageManager.getFilaments());
+    setProfiles(StorageManager.getProfiles());
+    setCustomers(StorageManager.getCustomers());
+    setProducts(StorageManager.getProducts());
+    setJobs(StorageManager.getPrintJobs());
+    setSettings(StorageManager.getSettings());
+  };
+
+  // Sync tab updates to address bar without reloading
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+  };
+
+  // Callback triggers
+  const handleSavePrinter = (printer: Printer) => {
+    const list = StorageManager.savePrinter(printer);
+    setPrinters(list);
+  };
+
+  const handleDeletePrinter = (id: string) => {
+    const list = StorageManager.deletePrinter(id);
+    setPrinters(list);
+  };
+
+  const handleSaveFilament = (filament: Filament) => {
+    const list = StorageManager.saveFilament(filament);
+    setFilaments(list);
+  };
+
+  const handleDeleteFilament = (id: string) => {
+    const list = StorageManager.deleteFilament(id);
+    setFilaments(list);
+  };
+
+  const handleSaveProfile = (profile: PrintProfile) => {
+    const list = StorageManager.saveProfile(profile);
+    setProfiles(list);
+  };
+
+  const handleDeleteProfile = (id: string) => {
+    const list = StorageManager.deleteProfile(id);
+    setProfiles(list);
+  };
+
+  const handleSaveCustomer = (customer: Customer) => {
+    const list = StorageManager.saveCustomer(customer);
+    setCustomers(list);
+  };
+
+  const handleDeleteCustomer = (id: string) => {
+    const list = StorageManager.deleteCustomer(id);
+    setCustomers(list);
+  };
+
+  const handleSaveProduct = (product: Product) => {
+    const list = StorageManager.saveProduct(product);
+    setProducts(list);
+  };
+
+  const handleDeleteProduct = (id: string) => {
+    const list = StorageManager.deleteProduct(id);
+    setProducts(list);
+  };
+
+  const handleSaveJob = (job: PrintJob) => {
+    const list = StorageManager.savePrintJob(job);
+    setJobs(list);
+    // Reload filaments because stock might have been consumed
+    setFilaments(StorageManager.getFilaments());
+  };
+
+  const handleDeleteJob = (id: string) => {
+    const list = StorageManager.deletePrintJob(id);
+    setJobs(list);
+  };
+
+  const handleSaveSettings = (newSettings: SystemSettings) => {
+    StorageManager.saveSettings(newSettings);
+    setSettings(newSettings);
+  };
+
+  const handleResetDatabase = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+      initializeStorage();
+      loadAllData();
+      setActiveTab('dashboard');
+      alert('Banco local reiniciado com sucesso!');
+    }
+  };
+
+  // Sell product shortcut callback
+  const handleSellProductShortcut = (product: Product) => {
+    setPrefilledProduct(product);
+    handleTabChange('new-print');
+  };
+
+  const handleClearPrefilledProduct = () => {
+    setPrefilledProduct(null);
+  };
+
+  // Show a loading skeleton or blank screen until hydration finishes
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center p-2 shadow-md shadow-violet-500/25 animate-pulse">
+            <svg viewBox="0 0 24 24" className="w-full h-full text-white fill-none stroke-current stroke-2">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+            </svg>
+          </div>
+          <span className="text-xs font-semibold text-muted-foreground tracking-widest uppercase animate-pulse">
+            Carregando Estúdio...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // Render proper sub-view based on tab state
+  const renderActiveView = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return (
+          <DashboardView 
+            jobs={jobs}
+            printers={printers}
+            filaments={filaments}
+            setActiveTab={handleTabChange}
+          />
+        );
+      case 'new-print':
+        return (
+          <NewPrintView 
+            printers={printers}
+            filaments={filaments}
+            profiles={profiles}
+            customers={customers}
+            settings={settings}
+            prefilledProduct={prefilledProduct}
+            onSaveJob={handleSaveJob}
+            onAddCustomer={handleSaveCustomer}
+            onAddFilament={handleSaveFilament}
+            onClearPrefilledProduct={handleClearPrefilledProduct}
+          />
+        );
+      case 'history':
+        return (
+          <HistoryView 
+            jobs={jobs}
+            printers={printers}
+            filaments={filaments}
+            customers={customers}
+            onDeleteJob={handleDeleteJob}
+          />
+        );
+      case 'filaments':
+        return (
+          <FilamentsView 
+            filaments={filaments}
+            onSave={handleSaveFilament}
+            onDelete={handleDeleteFilament}
+          />
+        );
+      case 'printers':
+        return (
+          <PrintersView 
+            printers={printers}
+            jobs={jobs}
+            onSave={handleSavePrinter}
+            onDelete={handleDeletePrinter}
+          />
+        );
+      case 'profiles':
+        return (
+          <ProfilesView 
+            profiles={profiles}
+            printers={printers}
+            filaments={filaments}
+            onSave={handleSaveProfile}
+            onDelete={handleDeleteProfile}
+          />
+        );
+      case 'customers':
+        return (
+          <CustomersView 
+            customers={customers}
+            jobs={jobs}
+            settings={settings}
+            onSave={handleSaveCustomer}
+            onDelete={handleDeleteCustomer}
+          />
+        );
+      case 'products':
+        return (
+          <ProductsView 
+            products={products}
+            filaments={filaments}
+            onSave={handleSaveProduct}
+            onDelete={handleDeleteProduct}
+            onSellProduct={handleSellProductShortcut}
+          />
+        );
+      case 'reports':
+        return (
+          <ReportsView 
+            jobs={jobs}
+            printers={printers}
+            filaments={filaments}
+          />
+        );
+      case 'settings':
+        return (
+          <SettingsView 
+            settings={settings}
+            onSaveSettings={handleSaveSettings}
+            onResetDatabase={handleResetDatabase}
+          />
+        );
+      default:
+        return (
+          <DashboardView 
+            jobs={jobs}
+            printers={printers}
+            filaments={filaments}
+            setActiveTab={handleTabChange}
+          />
+        );
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <LayoutShell activeTab={activeTab} setActiveTab={handleTabChange}>
+      {renderActiveView()}
+    </LayoutShell>
   );
 }

@@ -1,0 +1,17 @@
+{
+  "name": "PrintForge 3D - Calculadora & SaaS",
+  "short_name": "PrintForge 3D",
+  "description": "Calculadora inteligente de custos reais e precificação de impressões 3D.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
