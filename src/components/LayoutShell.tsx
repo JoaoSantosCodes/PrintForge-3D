@@ -10,7 +10,6 @@ import {
   Sliders, 
   Users, 
   ShoppingBag, 
-  TrendingUp, 
   Settings, 
   Menu, 
   X, 
@@ -18,20 +17,21 @@ import {
   LogOut,
   User,
   Plus,
-  AlertTriangle
+  AlertTriangle,
+  Layers,
+  Package,
+  TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type TabType = 
   | 'dashboard' 
-  | 'new-print' 
-  | 'history' 
-  | 'filaments' 
+  | 'production' 
+  | 'inventory' 
   | 'printers' 
-  | 'profiles' 
-  | 'customers' 
+  | 'crm' 
   | 'products' 
-  | 'reports' 
+  | 'finance' 
   | 'settings';
 
 interface LayoutShellProps {
@@ -80,24 +80,22 @@ export default function LayoutShell({
 
   const menuItems: readonly MenuItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'new-print', label: 'Calculadora de Custo', icon: Calculator, highlight: true },
-    { id: 'history', label: 'Histórico', icon: History },
-    { id: 'filaments', label: 'Filamentos', icon: Palette },
+    { id: 'production', label: 'Produção', icon: Layers, highlight: true },
+    { id: 'inventory', label: 'Estoque', icon: Package },
     { id: 'printers', label: 'Impressoras', icon: Printer },
-    { id: 'profiles', label: 'Perfis de Impressão', icon: Sliders },
-    { id: 'customers', label: 'Clientes (CRM)', icon: Users },
-    { id: 'products', label: 'Produtos Rápidos', icon: ShoppingBag },
-    { id: 'reports', label: 'Relatórios', icon: TrendingUp },
+    { id: 'crm', label: 'Clientes (CRM)', icon: Users },
+    { id: 'products', label: 'Produtos', icon: ShoppingBag },
+    { id: 'finance', label: 'Financeiro', icon: TrendingUp },
     { id: 'settings', label: 'Configurações', icon: Settings },
   ];
 
   // Items visible on the main mobile bottom bar (max 4 + 'more')
   const mobileMainItems = menuItems.filter(item => 
-    ['dashboard', 'new-print', 'history', 'filaments'].includes(item.id)
+    ['dashboard', 'production', 'inventory', 'finance'].includes(item.id)
   );
 
   const mobileExtraItems = menuItems.filter(item => 
-    !['dashboard', 'new-print', 'history', 'filaments'].includes(item.id)
+    !['dashboard', 'production', 'inventory', 'finance'].includes(item.id)
   );
 
   const handleTabChange = (tabId: TabType) => {

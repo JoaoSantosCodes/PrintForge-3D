@@ -9,14 +9,12 @@ import { createClient } from '@/utils/supabase/client';
 
 // Views
 import DashboardView from '@/components/views/DashboardView';
-import NewPrintView from '@/components/views/NewPrintView';
-import HistoryView from '@/components/views/HistoryView';
-import FilamentsView from '@/components/views/FilamentsView';
+import ProductionView from '@/components/views/ProductionView';
+import InventoryView from '@/components/views/InventoryView';
 import PrintersView from '@/components/views/PrintersView';
-import ProfilesView from '@/components/views/ProfilesView';
 import CustomersView from '@/components/views/CustomersView';
 import ProductsView from '@/components/views/ProductsView';
-import ReportsView from '@/components/views/ReportsView';
+import FinanceView from '@/components/views/FinanceView';
 import SettingsView from '@/components/views/SettingsView';
 
 export default function Home() {
@@ -93,9 +91,8 @@ export default function Home() {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab') as TabType;
       if (tabParam && [
-        'dashboard', 'new-print', 'history', 'filaments', 
-        'printers', 'profiles', 'customers', 'products', 
-        'reports', 'settings'
+        'dashboard', 'production', 'inventory', 'printers', 
+        'crm', 'products', 'finance', 'settings'
       ].includes(tabParam)) {
         setActiveTab(tabParam);
       }
@@ -226,7 +223,7 @@ export default function Home() {
   // Sell product shortcut callback
   const handleSellProductShortcut = (product: Product) => {
     setPrefilledProduct(product);
-    handleTabChange('new-print');
+    handleTabChange('production');
   };
 
   const handleClearPrefilledProduct = () => {
@@ -263,37 +260,29 @@ export default function Home() {
             setActiveTab={handleTabChange}
           />
         );
-      case 'new-print':
+      case 'production':
         return (
-          <NewPrintView 
+          <ProductionView 
             printers={printers}
             filaments={filaments}
             profiles={profiles}
             customers={customers}
+            jobs={jobs}
             settings={settings}
             prefilledProduct={prefilledProduct}
             onSaveJob={handleSaveJob}
             onAddCustomer={handleSaveCustomer}
             onAddFilament={handleSaveFilament}
             onClearPrefilledProduct={handleClearPrefilledProduct}
-          />
-        );
-      case 'history':
-        return (
-          <HistoryView 
-            jobs={jobs}
-            printers={printers}
-            filaments={filaments}
-            customers={customers}
             onDeleteJob={handleDeleteJob}
           />
         );
-      case 'filaments':
+      case 'inventory':
         return (
-          <FilamentsView 
+          <InventoryView 
             filaments={filaments}
-            onSave={handleSaveFilament}
-            onDelete={handleDeleteFilament}
+            onSaveFilament={handleSaveFilament}
+            onDeleteFilament={handleDeleteFilament}
           />
         );
       case 'printers':
@@ -305,17 +294,7 @@ export default function Home() {
             onDelete={handleDeletePrinter}
           />
         );
-      case 'profiles':
-        return (
-          <ProfilesView 
-            profiles={profiles}
-            printers={printers}
-            filaments={filaments}
-            onSave={handleSaveProfile}
-            onDelete={handleDeleteProfile}
-          />
-        );
-      case 'customers':
+      case 'crm':
         return (
           <CustomersView 
             customers={customers}
@@ -335,12 +314,11 @@ export default function Home() {
             onSellProduct={handleSellProductShortcut}
           />
         );
-      case 'reports':
+      case 'finance':
         return (
-          <ReportsView 
+          <FinanceView 
             jobs={jobs}
-            printers={printers}
-            filaments={filaments}
+            settings={settings}
           />
         );
       case 'settings':

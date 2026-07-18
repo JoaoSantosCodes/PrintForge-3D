@@ -96,7 +96,7 @@ export default function DashboardView({
           </p>
         </div>
         <button
-          onClick={() => setActiveTab('new-print')}
+          onClick={() => setActiveTab('production')}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl gradient-accent hover:opacity-90 text-white font-medium text-sm shadow-lg shadow-violet-500/20 active:scale-95 transition-all"
         >
           <Plus className="w-4 h-4" />
@@ -228,7 +228,7 @@ export default function DashboardView({
             <h3 className="font-outfit font-bold text-base">Atalhos Rápidos</h3>
             <div className="grid grid-cols-2 gap-3">
               <button 
-                onClick={() => setActiveTab('filaments')}
+                onClick={() => setActiveTab('inventory')}
                 className="flex flex-col items-center gap-2 p-3 bg-muted/40 hover:bg-muted border border-border hover:border-violet-500/20 rounded-xl transition-all text-center"
               >
                 <span className="p-2 bg-violet-500/10 text-violet-400 rounded-lg">
@@ -248,7 +248,7 @@ export default function DashboardView({
               </button>
 
               <button 
-                onClick={() => setActiveTab('customers')}
+                onClick={() => setActiveTab('crm')}
                 className="flex flex-col items-center gap-2 p-3 bg-muted/40 hover:bg-muted border border-border hover:border-emerald-500/20 rounded-xl transition-all text-center"
               >
                 <span className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg">
@@ -313,7 +313,7 @@ export default function DashboardView({
             <p className="text-xs text-muted-foreground">Últimos orçamentos e impressões registradas</p>
           </div>
           <button 
-            onClick={() => setActiveTab('history')}
+            onClick={() => setActiveTab('production')}
             className="text-xs font-semibold text-primary hover:text-violet-400 transition-colors"
           >
             Ver Histórico Completo
