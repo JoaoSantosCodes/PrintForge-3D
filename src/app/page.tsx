@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import LayoutShell, { TabType } from '@/components/LayoutShell';
 import { StorageManager, initializeStorage } from '@/lib/storage';
 import { Printer, Filament, PrintProfile, Customer, Product, PrintJob, SystemSettings } from '@/types';
+import LoginScreen from '@/components/LoginScreen';
+import { createClient } from '@/utils/supabase/client';
 
 // Views
 import DashboardView from '@/components/views/DashboardView';
@@ -18,8 +20,14 @@ import ReportsView from '@/components/views/ReportsView';
 import SettingsView from '@/components/views/SettingsView';
 
 export default function Home() {
+  const supabase = createClient();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [isLoaded, setIsLoaded] = useState(false);
+  
+  // Auth states
+  const [user, setUser] = useState<any>(null);
+  const [authSkipped, setAuthSkipped] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
 
   // States
   const [printers, setPrinters] = useState<Printer[]>([]);
@@ -56,6 +64,29 @@ export default function Home() {
         console.error('Falha ao registrar PWA Service Worker:', err);
       });
     }
+
+    // Check Supabase session
+    const checkSession = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUser(user);
+        } else if (typeof window !== 'undefined') {
+          const skipped = localStorage.getItem('printforge_auth_skipped') === 'true';
+          setAuthSkipped(skipped);
+        }
+      } catch (err) {
+        console.error('Error fetching Supabase session:', err);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+    checkSession();
+
+    // Listen to Auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
     
     // Check URL search params for default tab (e.g. ?tab=new-print)
     if (typeof window !== 'undefined') {
@@ -71,7 +102,33 @@ export default function Home() {
     }
     
     setIsLoaded(true);
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  const handleLoginSuccess = (usr: any) => {
+    setUser(usr);
+    setAuthSkipped(false);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('printforge_auth_skipped');
+    }
+  };
+
+  const handleSkipAuth = () => {
+    setAuthSkipped(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('printforge_auth_skipped', 'true');
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setAuthSkipped(false);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('printforge_auth_skipped');
+    }
+  };
 
   const loadAllData = () => {
     setPrinters(StorageManager.getPrinters());
@@ -306,8 +363,30 @@ export default function Home() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!user && !authSkipped) {
+    return (
+      <LoginScreen 
+        onLoginSuccess={handleLoginSuccess}
+        onSkipAuth={handleSkipAuth}
+      />
+    );
+  }
+
   return (
-    <LayoutShell activeTab={activeTab} setActiveTab={handleTabChange}>
+    <LayoutShell 
+      activeTab={activeTab} 
+      setActiveTab={handleTabChange}
+      userEmail={user?.email || 'Modo Local (Offline)'}
+      onLogout={handleLogout}
+    >
       {renderActiveView()}
     </LayoutShell>
   );
