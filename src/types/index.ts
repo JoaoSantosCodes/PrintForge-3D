@@ -85,6 +85,13 @@ export interface PrintJob {
   extraItems: ExtraItem[];
   shippingCost: number;
   
+  // Painting and finishing post-processing
+  paintingTimeMins?: number;
+  paintingLaborRate?: number;
+  paintCost?: number;
+  useAirbrush?: boolean;
+  airbrushCost?: number;
+  
   // Fees and settings used
   marketplaceFeePercent: number;
   marketplaceFixedFee: number;
@@ -111,6 +118,8 @@ export interface SystemSettings {
   defaultPackagingBubbleWrapCost: number;
   currency: string;
   defaultWhatsAppTemplate?: string;
+  defaultPaintingLaborRate?: number;
+  defaultAirbrushHourlyRate?: number;
 }
 
 export interface UserSession {

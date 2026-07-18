@@ -161,6 +161,12 @@ export default function HistoryView({
     doc.setFontSize(14);
     doc.text('2. Composição de Custos (Unidade)', 15, 100);
 
+    const paintingMinsTotal = job.paintingTimeMins || 0;
+    const paintingLaborCost = ((paintingMinsTotal / 60) * (job.paintingLaborRate || 0));
+    const paintConsumableCost = job.paintCost || 0;
+    const airbrushCost = job.airbrushCost || 0;
+    const totalPaintingCost = paintingLaborCost + paintConsumableCost + airbrushCost;
+
     const costRows = [
       ['Material (Filamento)', `${job.weightG}g utilizado`, formatCurrency(job.materialCost)],
       ['Energia Elétrica', `${printer?.consumptionWatts}W consumidos`, formatCurrency(job.energyCost)],
@@ -169,6 +175,10 @@ export default function HistoryView({
       ['Embalagem & Envio', 'Caixas e fitas protetoras', formatCurrency(job.packagingCost)],
       ['Hardware & Extras', `${job.extraItems.length} item(s) adicional(is)`, formatCurrency(job.extraCostsAmount)],
     ];
+
+    if (totalPaintingCost > 0) {
+      costRows.push(['Pós-Processamento / Pintura', `${paintingMinsTotal}min de acabamento`, formatCurrency(totalPaintingCost)]);
+    }
 
     (doc as any).autoTable({
       startY: 105,
@@ -434,6 +444,14 @@ export default function HistoryView({
                                   <div className="flex justify-between"><span>Depreciação de Máquina:</span> <span className="font-semibold text-foreground">{formatCurrency(job.depreciationCost * job.qty)}</span></div>
                                   <div className="flex justify-between"><span>Manutenção Preventiva:</span> <span className="font-semibold text-foreground">{formatCurrency(job.maintenanceCost * job.qty)}</span></div>
                                   <div className="flex justify-between"><span>Embalagem protetora:</span> <span className="font-semibold text-foreground">{formatCurrency(job.packagingCost * job.qty)}</span></div>
+                                  {((job.paintCost || 0) + (job.airbrushCost || 0) + (job.paintingTimeMins || 0) * (job.paintingLaborRate || 0)) > 0 && (
+                                    <div className="flex justify-between">
+                                      <span>Pós-processamento / Pintura:</span>
+                                      <span className="font-semibold text-foreground">
+                                        {formatCurrency(((job.paintCost || 0) + (job.airbrushCost || 0) + ((job.paintingTimeMins || 0) / 60) * (job.paintingLaborRate || 0)) * job.qty)}
+                                      </span>
+                                    </div>
+                                  )}
                                   {job.extraCostsAmount > 0 && (
                                     <div className="flex justify-between"><span>Hardware & Insumos Extras:</span> <span className="font-semibold text-foreground">{formatCurrency(job.extraCostsAmount * job.qty)}</span></div>
                                   )}
@@ -442,7 +460,7 @@ export default function HistoryView({
                                   )}
                                   <div className="border-t border-border/40 pt-1.5 flex justify-between font-bold text-foreground">
                                     <span>Custo de Produção Total:</span>
-                                    <span>{formatCurrency((job.materialCost + job.energyCost + job.depreciationCost + job.maintenanceCost + job.packagingCost + job.extraCostsAmount) * job.qty)}</span>
+                                    <span>{formatCurrency(job.totalCost * job.qty)}</span>
                                   </div>
                                 </div>
                               </div>

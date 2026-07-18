@@ -75,6 +75,11 @@ CREATE TABLE IF NOT EXISTS jobs (
   observations TEXT,
   packaging_type TEXT NOT NULL DEFAULT 'caixa',
   shipping_cost DOUBLE PRECISION NOT NULL DEFAULT 0,
+  painting_time_mins INTEGER,
+  painting_labor_rate DOUBLE PRECISION,
+  paint_cost DOUBLE PRECISION,
+  use_airbrush BOOLEAN,
+  airbrush_cost DOUBLE PRECISION,
   marketplace_fee_percent DOUBLE PRECISION NOT NULL DEFAULT 0,
   marketplace_fixed_fee DOUBLE PRECISION NOT NULL DEFAULT 0,
   tax_percent DOUBLE PRECISION NOT NULL DEFAULT 0,
@@ -99,10 +104,12 @@ CREATE TABLE IF NOT EXISTS settings (
   default_packaging_bubble_wrap_cost DOUBLE PRECISION NOT NULL DEFAULT 0.8,
   currency TEXT DEFAULT 'BRL' NOT NULL,
   default_whatsapp_template TEXT,
+  default_painting_labor_rate DOUBLE PRECISION NOT NULL DEFAULT 20.0,
+  default_airbrush_hourly_rate DOUBLE PRECISION NOT NULL DEFAULT 2.5,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- 8. Seed Default Settings
-INSERT INTO settings (id, electricity_kwh_rate, default_tax_percent, default_markup_percent, default_marketplace_fee_percent, default_marketplace_fixed_fee, default_packaging_box_cost, default_packaging_tape_cost, default_packaging_bubble_wrap_cost, currency, default_whatsapp_template)
-VALUES ('default-settings', 0.95, 0, 30, 0, 0, 2.0, 0.4, 0.8, 'BRL', 'Olá [Cliente]! Seu orçamento para a peça "[Peça]" ficou em [Valor]. Qualquer dúvida estou à disposição!')
+INSERT INTO settings (id, electricity_kwh_rate, default_tax_percent, default_markup_percent, default_marketplace_fee_percent, default_marketplace_fixed_fee, default_packaging_box_cost, default_packaging_tape_cost, default_packaging_bubble_wrap_cost, currency, default_whatsapp_template, default_painting_labor_rate, default_airbrush_hourly_rate)
+VALUES ('default-settings', 0.95, 0, 30, 0, 0, 2.0, 0.4, 0.8, 'BRL', 'Olá [Cliente]! Seu orçamento para a peça "[Peça]" ficou em [Valor]. Qualquer dúvida estou à disposição!', 20.0, 2.5)
 ON CONFLICT (id) DO NOTHING;

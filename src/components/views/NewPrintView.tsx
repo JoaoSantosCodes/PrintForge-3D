@@ -19,7 +19,8 @@ import {
   AlertTriangle,
   Play,
   FileText,
-  X
+  X,
+  Palette
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Printer, Filament, PrintProfile, Customer, PrintJob, ExtraItem, SystemSettings, Product } from '@/types';
@@ -71,6 +72,15 @@ export default function NewPrintView({
   const [printMins, setPrintMins] = useState<number>(0);
   const [rawTimeInput, setRawTimeInput] = useState('');
   const [quantity, setQuantity] = useState<number>(1);
+  
+  // Painting and finishing post-processing
+  const [hasPainting, setHasPainting] = useState(false);
+  const [paintingHours, setPaintingHours] = useState(0);
+  const [paintingMins, setPaintingMins] = useState(0);
+  const [paintingLaborRate, setPaintingLaborRate] = useState(settings.defaultPaintingLaborRate || 20.00);
+  const [paintCost, setPaintCost] = useState(0);
+  const [useAirbrush, setUseAirbrush] = useState(false);
+  const [airbrushHourlyRate, setAirbrushHourlyRate] = useState(settings.defaultAirbrushHourlyRate || 2.50);
   const [failed, setFailed] = useState<boolean>(false);
   const [failedReason, setFailedReason] = useState<string>('');
   const [observations, setObservations] = useState('');
@@ -134,6 +144,18 @@ export default function NewPrintView({
       setSelectedFilamentId(filaments[0].id);
     }
   }, [printers, filaments, selectedPrinterId, selectedFilamentId]);
+
+  // Update painting defaults if settings change
+  useEffect(() => {
+    if (settings) {
+      if (settings.defaultPaintingLaborRate !== undefined) {
+        setPaintingLaborRate(settings.defaultPaintingLaborRate);
+      }
+      if (settings.defaultAirbrushHourlyRate !== undefined) {
+        setAirbrushHourlyRate(settings.defaultAirbrushHourlyRate);
+      }
+    }
+  }, [settings]);
 
   const handleRawTimeChange = (val: string) => {
     setRawTimeInput(val);
@@ -337,8 +359,16 @@ export default function NewPrintView({
   // 6. Extras
   const extraCostsAmount = extraItems.reduce((acc, item) => acc + (item.qty * item.unitCost), 0);
 
-  // Total Production Cost per unit
-  const productionCostPerUnit = materialCost + energyCost + depreciationCost + maintenanceCost + packagingCost + extraCostsAmount;
+  // 7. Pintura e Acabamento
+  const paintingMinsTotal = paintingHours * 60 + paintingMins;
+  const paintingTimeHours = paintingMinsTotal / 60;
+  const paintingLaborCost = hasPainting ? paintingTimeHours * paintingLaborRate : 0;
+  const paintConsumableCost = hasPainting ? paintCost : 0;
+  const airbrushCost = (hasPainting && useAirbrush) ? paintingTimeHours * airbrushHourlyRate : 0;
+  const totalPaintingCost = paintingLaborCost + paintConsumableCost + airbrushCost;
+
+  // Total Production Cost per unit (including painting finishing)
+  const productionCostPerUnit = materialCost + energyCost + depreciationCost + maintenanceCost + packagingCost + extraCostsAmount + totalPaintingCost;
   const totalProductionCost = productionCostPerUnit * quantity;
 
   // Pricing suggested formula
@@ -395,6 +425,14 @@ export default function NewPrintView({
       extraCostsAmount,
       extraItems,
       shippingCost,
+
+      // Painting
+      paintingTimeMins: hasPainting ? paintingMinsTotal : 0,
+      paintingLaborRate: hasPainting ? paintingLaborRate : 0,
+      paintCost: hasPainting ? paintCost : 0,
+      useAirbrush: hasPainting ? useAirbrush : false,
+      airbrushCost: hasPainting ? airbrushCost : 0,
+
       marketplaceFeePercent,
       marketplaceFixedFee,
       taxPercent,
@@ -427,6 +465,11 @@ export default function NewPrintView({
     setObservations('');
     setParsedFileInfo(null);
     setStlFile(null);
+    setHasPainting(false);
+    setPaintingHours(0);
+    setPaintingMins(0);
+    setPaintCost(0);
+    setUseAirbrush(false);
   };
 
   return (
@@ -779,10 +822,107 @@ export default function NewPrintView({
               </div>
             </div>
 
-            {/* Step 4: Marketplace, Profit, Taxes */}
+            {/* Step 4: Painting & Post-Processing (Opcional) */}
+            <div className="bg-card border border-border rounded-2xl p-4 md:p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-border pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded bg-violet-500/15 text-violet-400 font-bold text-xs flex items-center justify-center">4</span>
+                  <h3 className="font-outfit font-bold text-sm">Pós-Processamento e Pintura (Opcional)</h3>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer text-xs">
+                  <input 
+                    type="checkbox"
+                    checked={hasPainting}
+                    onChange={e => setHasPainting(e.target.checked)}
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                  />
+                  <span className="font-semibold text-muted-foreground">Adicionar Pintura/Acabamento</span>
+                </label>
+              </div>
+
+              {hasPainting && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-fade-in">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground">Tempo de Pintura *</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="relative">
+                        <input 
+                          type="number" 
+                          min="0"
+                          placeholder="Horas"
+                          value={paintingHours || ''}
+                          onChange={e => setPaintingHours(parseInt(e.target.value) || 0)}
+                          className="w-full bg-muted/30 border border-border focus:border-primary rounded-xl pl-3 pr-6 py-2 text-xs focus:outline-none text-white font-bold"
+                        />
+                        <span className="absolute right-2 top-2 text-[10px] text-muted-foreground">h</span>
+                      </div>
+                      <div className="relative">
+                        <input 
+                          type="number" 
+                          min="0"
+                          max="59"
+                          placeholder="Min"
+                          value={paintingMins || ''}
+                          onChange={e => setPaintingMins(parseInt(e.target.value) || 0)}
+                          className="w-full bg-muted/30 border border-border focus:border-primary rounded-xl pl-3 pr-7 py-2 text-xs focus:outline-none text-white font-bold"
+                        />
+                        <span className="absolute right-2 top-2 text-[10px] text-muted-foreground">min</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground">Custo Mão de Obra (R$/h)</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-[10px] text-muted-foreground">R$</span>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        min="0"
+                        value={paintingLaborRate || ''}
+                        onChange={e => setPaintingLaborRate(parseFloat(e.target.value) || 0)}
+                        className="w-full bg-muted/30 border border-border focus:border-primary rounded-xl pl-8 pr-4 py-2 text-xs focus:outline-none text-white font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground">Tintas e Insumos (R$)</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-[10px] text-muted-foreground">R$</span>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        min="0"
+                        value={paintCost || ''}
+                        onChange={e => setPaintCost(parseFloat(e.target.value) || 0)}
+                        className="w-full bg-muted/30 border border-border focus:border-primary rounded-xl pl-8 pr-4 py-2 text-xs focus:outline-none text-white font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col justify-end pb-1.5 pl-1.5">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs">
+                      <input 
+                        type="checkbox"
+                        checked={useAirbrush}
+                        onChange={e => setUseAirbrush(e.target.checked)}
+                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                      />
+                      <div>
+                        <span className="font-semibold text-foreground">Utilizou Aerógrafo</span>
+                        <p className="text-[9px] text-muted-foreground">Taxa uso: {formatCurrency(airbrushHourlyRate)}/h</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Step 5: Marketplace, Profit, Taxes */}
             <div className="bg-card border border-border rounded-2xl p-4 md:p-5 space-y-4">
               <div className="flex items-center gap-2 border-b border-border pb-2.5">
-                <span className="w-5 h-5 rounded bg-violet-500/15 text-violet-400 font-bold text-xs flex items-center justify-center">4</span>
+                <span className="w-5 h-5 rounded bg-violet-500/15 text-violet-400 font-bold text-xs flex items-center justify-center">5</span>
                 <h3 className="font-outfit font-bold text-sm">Taxas, Impostos e Lucratividade</h3>
               </div>
 
@@ -939,6 +1079,15 @@ export default function NewPrintView({
                 <span className="text-muted-foreground flex items-center gap-1.5"><Package className="w-3.5 h-3.5 text-zinc-400" /> Embalagem:</span>
                 <span className="font-semibold">{formatCurrency(packagingCost)}</span>
               </div>
+              {totalPaintingCost > 0 && (
+                <div className="flex justify-between items-start">
+                  <span className="text-muted-foreground flex items-center gap-1.5 pt-0.5"><Palette className="w-3.5 h-3.5 text-emerald-400" /> Acabamento:</span>
+                  <div className="text-right">
+                    <span className="font-semibold block text-foreground">{formatCurrency(totalPaintingCost)}</span>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">Mão de Obra + Tintas {useAirbrush && '+ Aerógrafo'}</p>
+                  </div>
+                </div>
+              )}
               {extraCostsAmount > 0 && (
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground flex items-center gap-1.5"><Plus className="w-3.5 h-3.5 text-primary" /> Extras:</span>

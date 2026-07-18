@@ -21,6 +21,8 @@ const DEFAULT_SETTINGS: SystemSettings = {
   defaultPackagingBubbleWrapCost: 0.80,
   currency: 'BRL',
   defaultWhatsAppTemplate: 'Olá [Cliente]! Seu orçamento para a peça "[Peça]" ficou em [Valor]. Qualquer dúvida estou à disposição!',
+  defaultPaintingLaborRate: 20.00,
+  defaultAirbrushHourlyRate: 2.50,
 };
 
 // Seed Data

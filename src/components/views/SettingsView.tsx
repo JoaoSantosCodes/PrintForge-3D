@@ -12,7 +12,8 @@ import {
   RotateCcw,
   CheckCircle2,
   Lock,
-  Globe
+  Globe,
+  Palette
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -36,6 +37,8 @@ export default function SettingsView({
   const [defaultPackagingTapeCost, setDefaultPackagingTapeCost] = useState<number>(settings.defaultPackagingTapeCost);
   const [defaultPackagingBubbleWrapCost, setDefaultPackagingBubbleWrapCost] = useState<number>(settings.defaultPackagingBubbleWrapCost);
   const [defaultWhatsAppTemplate, setDefaultWhatsAppTemplate] = useState<string>(settings.defaultWhatsAppTemplate || '');
+  const [defaultPaintingLaborRate, setDefaultPaintingLaborRate] = useState<number>(settings.defaultPaintingLaborRate !== undefined ? settings.defaultPaintingLaborRate : 20.00);
+  const [defaultAirbrushHourlyRate, setDefaultAirbrushHourlyRate] = useState<number>(settings.defaultAirbrushHourlyRate !== undefined ? settings.defaultAirbrushHourlyRate : 2.50);
 
   // Supabase connection keys (simulated/stored locally)
   const [supabaseUrl, setSupabaseUrl] = useState(() => {
@@ -66,6 +69,8 @@ export default function SettingsView({
       defaultPackagingBubbleWrapCost,
       currency: settings.currency,
       defaultWhatsAppTemplate,
+      defaultPaintingLaborRate,
+      defaultAirbrushHourlyRate,
     });
     alert('Configurações salvas com sucesso!');
   };
@@ -191,6 +196,41 @@ export default function SettingsView({
                   value={defaultPackagingTapeCost} 
                   onChange={e => setDefaultPackagingTapeCost(parseFloat(e.target.value) || 0)}
                   className="w-full bg-muted/30 border border-border focus:border-primary rounded-xl px-3.5 py-2 text-xs focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Post-Processing Defaults */}
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm">
+            <h3 className="font-outfit font-bold text-base flex items-center gap-2 border-b border-border pb-3 text-gradient-accent-text">
+              <Palette className="w-4.5 h-4.5 text-emerald-400" /> Acabamento e Pintura Padrão
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Mão de Obra de Pintura (R$ por hora) *</label>
+                <input 
+                  type="number" 
+                  required
+                  step="0.01"
+                  min="0"
+                  value={defaultPaintingLaborRate} 
+                  onChange={e => setDefaultPaintingLaborRate(parseFloat(e.target.value) || 0)}
+                  className="w-full bg-muted/30 border border-border focus:border-primary rounded-xl px-3.5 py-2 text-xs focus:outline-none text-white font-bold"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Depreciação de Aerógrafo (R$ por hora) *</label>
+                <input 
+                  type="number" 
+                  required
+                  step="0.01"
+                  min="0"
+                  value={defaultAirbrushHourlyRate} 
+                  onChange={e => setDefaultAirbrushHourlyRate(parseFloat(e.target.value) || 0)}
+                  className="w-full bg-muted/30 border border-border focus:border-primary rounded-xl px-3.5 py-2 text-xs focus:outline-none text-white font-bold"
                 />
               </div>
             </div>

@@ -89,6 +89,11 @@ model PrintJob {
   observations           String?
   packagingType          String    // caixa, saco, custom, none
   shippingCost           Float
+  paintingTimeMins       Int?
+  paintingLaborRate      Float?
+  paintCost              Float?
+  useAirbrush            Boolean?
+  airbrushCost           Float?
   marketplaceFeePercent  Float
   marketplaceFixedFee    Float
   taxPercent             Float
@@ -112,5 +117,7 @@ model SystemSettings {
   defaultPackagingBubbleWrapCost Float
   currency                       String   @default("BRL")
   defaultWhatsAppTemplate        String?
+  defaultPaintingLaborRate       Float?
+  defaultAirbrushHourlyRate      Float?
   updatedAt                      DateTime @default(now())
 }
