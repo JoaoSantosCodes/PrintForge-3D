@@ -1,3 +1,12 @@
+-- 0. Clean Existing Tables (Uncomment if you want a complete database reset)
+DROP TABLE IF EXISTS jobs CASCADE;
+DROP TABLE IF EXISTS products CASCADE;
+DROP TABLE IF EXISTS customers CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
+DROP TABLE IF EXISTS filaments CASCADE;
+DROP TABLE IF EXISTS printers CASCADE;
+DROP TABLE IF EXISTS settings CASCADE;
+
 -- 1. Create Printers Table
 CREATE TABLE IF NOT EXISTS printers (
   id TEXT PRIMARY KEY,
