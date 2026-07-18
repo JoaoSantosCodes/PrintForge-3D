@@ -1,0 +1,116 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Printer {
+  id                    String         @id
+  name                  String
+  model                 String
+  consumptionWatts      Float
+  price                 Float
+  lifespanHours         Int
+  annualMaintenanceCost Float
+  status                String         // active, printing, maintenance, inactive
+  createdAt             DateTime       @default(now())
+  profiles              PrintProfile[]
+  jobs                  PrintJob[]
+}
+
+model Filament {
+  id            String         @id
+  brand         String
+  type          String
+  colorName     String
+  colorHex      String
+  weightG       Float
+  price         Float
+  currentStockG Float
+  createdAt     DateTime       @default(now())
+  profiles      PrintProfile[]
+  jobs          PrintJob[]
+}
+
+model PrintProfile {
+  id                 String    @id
+  name               String
+  printerId          String
+  printer            Printer   @relation(fields: [printerId], references: [id], onDelete: Cascade)
+  defaultFilamentId  String?
+  defaultFilament    Filament? @relation(fields: [defaultFilamentId], references: [id], onDelete: SetNull)
+  layerHeightMm      Float?
+  infillPercent      Int?
+  speedMms           Float?
+  description        String?
+  createdAt          DateTime  @default(now())
+}
+
+model Customer {
+  id        String     @id
+  name      String
+  phone     String
+  instagram String
+  address   String
+  notes     String
+  createdAt DateTime   @default(now())
+  jobs      PrintJob[]
+}
+
+model Product {
+  id             String   @id
+  name           String
+  weightG        Float
+  printTimeMins  Int
+  defaultFilamentId String?
+  suggestedPrice Float
+  description    String?
+  createdAt      DateTime @default(now())
+}
+
+model PrintJob {
+  id                     String    @id
+  name                   String
+  customerId             String
+  customer               Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  printerId              String
+  printer                Printer   @relation(fields: [printerId], references: [id], onDelete: Cascade)
+  filamentId             String
+  filament               Filament  @relation(fields: [filamentId], references: [id], onDelete: Cascade)
+  weightG                Float
+  printTimeMins          Int
+  qty                    Int
+  failed                 Boolean   @default(false)
+  failedReason           String?
+  observations           String?
+  packagingType          String    // caixa, saco, custom, none
+  shippingCost           Float
+  marketplaceFeePercent  Float
+  marketplaceFixedFee    Float
+  taxPercent             Float
+  markupPercent          Float
+  totalCost              Float
+  suggestedPrice         Float
+  finalPrice             Float
+  netProfit              Float
+  createdAt              DateTime  @default(now())
+}
+
+model SystemSettings {
+  id                             String   @id @default("default-settings")
+  electricityKwhRate             Float
+  defaultTaxPercent              Float
+  defaultMarkupPercent           Float
+  defaultMarketplaceFeePercent   Float
+  defaultMarketplaceFixedFee     Float
+  defaultPackagingBoxCost        Float
+  defaultPackagingTapeCost       Float
+  defaultPackagingBubbleWrapCost Float
+  currency                       String   @default("BRL")
+  defaultWhatsAppTemplate        String?
+  updatedAt                      DateTime @default(now())
+}
